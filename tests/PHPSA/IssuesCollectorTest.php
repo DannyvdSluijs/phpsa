@@ -1,13 +1,4 @@
 <?php
-/**
- * phpsa
- *
- * PHP Version 7
- *
- * @link      http://scm.monitorlinq.com/backend
- * @copyright Copyright (c) 2016 Monitorlinq Limited
- * @license   http://www.monitorlinq.com/license Proprietary License
- */
 
 namespace Tests\PHPSA;
 
