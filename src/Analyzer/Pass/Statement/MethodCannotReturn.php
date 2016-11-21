@@ -6,15 +6,17 @@
 namespace PHPSA\Analyzer\Pass\Statement;
 
 use PhpParser\Node\Stmt\ClassMethod;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Helper\ResolveExpressionTrait;
-use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
-use PHPSA\Analyzer\Pass\ConfigurablePassInterface;
+use PHPSA\Analyzer\Pass;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class MethodCannotReturn implements ConfigurablePassInterface, AnalyzerPassInterface
+class MethodCannotReturn implements Pass\AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
     use ResolveExpressionTrait;
+
+    const DESCRIPTION = 'Checks for return statements in `__construct` and `__destruct` since they can\'t return anything.';
 
     /**
      * @param ClassMethod $methodStmt
@@ -23,6 +25,10 @@ class MethodCannotReturn implements ConfigurablePassInterface, AnalyzerPassInter
      */
     public function pass(ClassMethod $methodStmt, Context $context)
     {
+        if ($methodStmt->stmts === null) {
+            return false;
+        }
+        
         if (count($methodStmt->stmts) == 0) {
             return false;
         }
@@ -46,19 +52,6 @@ class MethodCannotReturn implements ConfigurablePassInterface, AnalyzerPassInter
         }
 
         return $result;
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('method_cannot_return')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 
     /**

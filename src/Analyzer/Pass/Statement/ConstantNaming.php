@@ -3,12 +3,17 @@
 namespace PHPSA\Analyzer\Pass\Statement;
 
 use PhpParser\Node\Stmt\ClassConst;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
 use PHPSA\Context;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
 class ConstantNaming implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks that constants are all uppercase.';
+
     /**
      * @param ClassConst $stmt
      * @param Context $context
@@ -29,7 +34,7 @@ class ConstantNaming implements AnalyzerPassInterface
                 $result = true;
             }
         }
-        
+
         return $result;
     }
 

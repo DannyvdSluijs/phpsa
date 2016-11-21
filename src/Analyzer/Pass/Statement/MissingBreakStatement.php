@@ -6,12 +6,16 @@
 namespace PHPSA\Analyzer\Pass\Statement;
 
 use PhpParser\Node\Stmt;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class MissingBreakStatement implements Pass\ConfigurablePassInterface, Pass\AnalyzerPassInterface
+class MissingBreakStatement implements Pass\AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks for a missing break or return statement in switch cases. Can ignore empty cases and the last case.';
+
     /**
      * @param Stmt\Switch_ $switchStmt
      * @param Context $context
@@ -34,19 +38,6 @@ class MissingBreakStatement implements Pass\ConfigurablePassInterface, Pass\Anal
         }
 
         return $result;
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('missing_break_statement')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 
     /**

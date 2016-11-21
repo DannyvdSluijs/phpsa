@@ -3,13 +3,14 @@
 namespace PHPSA\Analyzer\Pass\Statement;
 
 use PhpParser\Node\Stmt;
-use PhpParser\Node;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class DoNotUseGoto implements Pass\ConfigurablePassInterface, Pass\AnalyzerPassInterface
+class DoNotUseGoto implements Pass\AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
     /**
      * @param Stmt\Goto_ $stmt
      * @param Context $context
@@ -20,19 +21,6 @@ class DoNotUseGoto implements Pass\ConfigurablePassInterface, Pass\AnalyzerPassI
         $context->notice('do_not_use_goto', 'Do not use goto statements', $stmt);
 
         return true;
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('do_not_use_goto')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 
     /**

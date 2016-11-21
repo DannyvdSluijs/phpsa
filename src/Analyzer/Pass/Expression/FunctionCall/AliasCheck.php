@@ -10,7 +10,9 @@ use PHPSA\Context;
 
 class AliasCheck extends AbstractFunctionCallAnalyzer
 {
-    protected $map = array(
+    const DESCRIPTION = 'Checks for use of alias functions and suggests the use of the originals.';
+
+    protected $map = [
         'join' => 'implode',
         'sizeof' => 'count',
         'pos' => 'current',
@@ -24,7 +26,7 @@ class AliasCheck extends AbstractFunctionCallAnalyzer
         'ini_alter' => 'ini_set',
         'fputs' => 'fwrite',
         'chop' => 'rtrim'
-    );
+    ];
 
     public function pass(FuncCall $funcCall, Context $context)
     {

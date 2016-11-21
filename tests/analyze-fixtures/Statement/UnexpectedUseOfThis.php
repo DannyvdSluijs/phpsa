@@ -125,12 +125,30 @@ class UnexpectedUseOfThis
         return 'Ok';
     }
 }
+
+/**
+ * @return string
+ */
+function thisAsArgument($this)
+{
+    return 'Cannot use $this as parameter';
+}
+
+/**
+ * @return string
+ */
+function OtherAsArgument($a)
+{
+    return 'Ok';
+}
 ?>
+----------------------------
+PHPSA\Analyzer\Pass\Statement\UnexpectedUseOfThis
 ----------------------------
 [
     {
         "type":"unexpected_use.this",
-        "message":"Method thisAsArgument can not have a parameter named \"this\".",
+        "message":"Method/Function thisAsArgument can not have a parameter named \"this\".",
         "file":"UnexpectedUseOfThis.php",
         "line":9
     },
@@ -163,5 +181,11 @@ class UnexpectedUseOfThis
         "message":"Can not unset $this.",
         "file":"UnexpectedUseOfThis.php",
         "line":61
+    },
+    {
+        "type":"unexpected_use.this",
+        "message":"Method/Function thisAsArgument can not have a parameter named \"this\".",
+        "file":"UnexpectedUseOfThis.php",
+        "line":131
     }
 ]

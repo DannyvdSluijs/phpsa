@@ -12,7 +12,8 @@ use PHPSA\Variable;
 use PHPSA\Compiler\Event;
 
 /**
- * Class ClassDefinition
+ * Class Definition
+ *
  * @package PHPSA\Definition
  */
 class ClassDefinition extends ParentDefinition
@@ -27,28 +28,28 @@ class ClassDefinition extends ParentDefinition
      *
      * @var ClassMethod[]
      */
-    protected $methods = array();
+    protected $methods = [];
 
     /**
      * Class properties
      *
      * @var Node\Stmt\PropertyProperty[]
      */
-    protected $properties = array();
+    protected $properties = [];
 
     /**
      * Property Statements
      *
      * @var Node\Stmt\Property[]
      */
-    protected $propertyStatements = array();
+    protected $propertyStatements = [];
 
     /**
      * Class constants
      *
      * @var Node\Stmt\Const_[]
      */
-    protected $constants = array();
+    protected $constants = [];
 
     /**
      * @todo Use Finder
@@ -75,7 +76,7 @@ class ClassDefinition extends ParentDefinition
     /**
      * @var array
      */
-    protected $interfaces = array();
+    protected $interfaces = [];
 
     /**
      * @param string $name
@@ -118,8 +119,8 @@ class ClassDefinition extends ParentDefinition
         foreach ($property->props as $propertyDefinition) {
             $this->properties[$propertyDefinition->name] = $propertyDefinition;
         }
-        
-        $this->propertyStatements[] = $property;
+
+        $this->propertyStatements[$propertyDefinition->name] = $property;
     }
 
     /**
@@ -140,6 +141,10 @@ class ClassDefinition extends ParentDefinition
             return true;
         }
 
+        $this->compiled = true;
+        $context->setFilepath($this->filepath);
+        $context->setScope($this);
+
         $context->getEventManager()->fire(
             Event\StatementBeforeCompile::EVENT_NAME,
             new Event\StatementBeforeCompile(
@@ -147,10 +152,6 @@ class ClassDefinition extends ParentDefinition
                 $context
             )
         );
-
-        $this->compiled = true;
-        $context->setFilepath($this->filepath);
-        $context->setScope($this);
 
         // Compile event for properties
         foreach ($this->properties as $property) {
@@ -163,6 +164,17 @@ class ClassDefinition extends ParentDefinition
                 Event\ExpressionBeforeCompile::EVENT_NAME,
                 new Event\ExpressionBeforeCompile(
                     $property->default,
+                    $context
+                )
+            );
+        }
+
+        // Compile event for PropertyProperty
+        foreach ($this->properties as $property) {
+            $context->getEventManager()->fire(
+                Event\StatementBeforeCompile::EVENT_NAME,
+                new Event\StatementBeforeCompile(
+                    $property,
                     $context
                 )
             );
@@ -290,7 +302,7 @@ class ClassDefinition extends ParentDefinition
     /**
      * @param string $name
      * @param bool $inherit
-     * @return Node\Stmt\Property
+     * @return Node\Stmt\PropertyProperty
      */
     public function getProperty($name, $inherit = false)
     {
@@ -302,6 +314,24 @@ class ClassDefinition extends ParentDefinition
 
         if ($inherit && $this->extendsClassDefinition) {
             return $this->extendsClassDefinition->getProperty($name, true);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param string $name
+     * @param bool $inherit
+     * @return Node\Stmt\Property
+     */
+    public function getPropertyStatement($name, $inherit = false)
+    {
+        if (isset($this->propertyStatements[$name])) {
+            return $this->propertyStatements[$name];
+        }
+
+        if ($inherit && $this->extendsClassDefinition) {
+            return $this->extendsClassDefinition->getPropertyStatement($name, true);
         }
 
         return null;
@@ -329,6 +359,14 @@ class ClassDefinition extends ParentDefinition
     public function isAbstract()
     {
         return (bool) ($this->type & Node\Stmt\Class_::MODIFIER_ABSTRACT);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isFinal()
+    {
+        return (bool) ($this->type & Node\Stmt\Class_::MODIFIER_FINAL);
     }
 
     /**

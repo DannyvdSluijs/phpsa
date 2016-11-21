@@ -7,7 +7,11 @@ namespace PHPSA\Definition;
 
 use PHPSA\Context;
 use PhpParser\Node\Stmt;
+use PHPSA\Compiler\Event;
 
+/**
+ * Trait Definition
+ */
 class TraitDefinition extends ParentDefinition
 {
     /**
@@ -25,6 +29,10 @@ class TraitDefinition extends ParentDefinition
      */
     protected $methods = [];
 
+    /**
+     * @param string $name
+     * @param Stmt\Trait_ $statement
+     */
     public function __construct($name, Stmt\Trait_ $statement)
     {
         $this->name = $name;
@@ -39,6 +47,16 @@ class TraitDefinition extends ParentDefinition
      */
     public function compile(Context $context)
     {
+        $context->setFilepath($this->filepath);
+
+        $context->getEventManager()->fire(
+            Event\StatementBeforeCompile::EVENT_NAME,
+            new Event\StatementBeforeCompile(
+                $this->statement,
+                $context
+            )
+        );
+
         return true;
     }
 
@@ -73,9 +91,9 @@ class TraitDefinition extends ParentDefinition
     }
 
     /**
-     * @param $method
+     * @param ClassMethod $method
      */
-    public function addMethod($method)
+    public function addMethod(ClassMethod $method)
     {
         $this->methods[] = $method;
     }

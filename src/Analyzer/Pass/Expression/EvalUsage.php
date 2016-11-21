@@ -6,11 +6,16 @@
 namespace PHPSA\Analyzer\Pass\Expression;
 
 use PhpParser\Node\Expr;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
 use PHPSA\Context;
 
 class EvalUsage implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Discourages the use of `eval()`.';
+
     /**
      * @param Expr\Eval_ $expr
      * @param Context $context

@@ -6,12 +6,16 @@
 namespace PHPSA\Analyzer\Pass\Expression;
 
 use PhpParser\Node\Expr;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\ConfigurablePassInterface
+class VariableVariableUsage implements Pass\AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Discourages the use of variable variables.';
+
     /**
      * @param Expr\Assign $expr
      * @param Context $context
@@ -33,6 +37,11 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
         return $this->analyzeAssign($expr, $context);
     }
 
+    /**
+     * @param Expr\Assign $expr
+     * @param Context $context
+     * @return bool
+     */
     private function analyzeAssign(Expr\Assign $expr, Context $context)
     {
         // list($a, $b) = …
@@ -40,9 +49,15 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
             return $this->analyzeList($expr->var, $context);
         }
 
+        // $a = ... or class::$a =
         return $this->analyzeVar($expr->var, $context);
     }
 
+    /**
+     * @param Expr\List_ $expr
+     * @param Context $context
+     * @return bool
+     */
     private function analyzeList(Expr\List_ $expr, Context $context)
     {
         $result = false;
@@ -59,6 +74,11 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
         return $result;
     }
 
+    /**
+     * @param Expr\ArrayDimFetch $expr
+     * @param Context $context
+     * @return bool
+     */
     private function analyzeArrayDimFetch(Expr\ArrayDimFetch $expr, Context $context)
     {
         $result = false;
@@ -78,6 +98,11 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
         return $result;
     }
 
+    /**
+     * @param Expr\PropertyFetch $expr
+     * @param Context $context
+     * @return bool
+     */
     private function analyzePropertyFetch(Expr\PropertyFetch $expr, Context $context)
     {
         if ($expr->name instanceof Expr\Variable) {
@@ -88,7 +113,12 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
         return false;
     }
 
-    private function analyzeVar(Expr\Variable $var, Context $context)
+
+    /**
+     * @param Expr\Variable|Expr\StaticPropertyFetch $var
+     * @param Context $context
+     */
+    private function analyzeVar(Expr $var, Context $context)
     {
         if (!$var->name instanceof Expr\Variable) {
             return false;
@@ -99,6 +129,10 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
         return true;
     }
 
+    /**
+     * @param Context $context
+     * @param Expr $expr
+     */
     private function notice(Context $context, Expr $expr)
     {
         $context->notice('variable.dynamic_assignment', 'Dynamic assignment is greatly discouraged.', $expr);
@@ -112,18 +146,5 @@ class VariableVariableUsage implements Pass\AnalyzerPassInterface, Pass\Configur
         return [
             Expr\Assign::class
         ];
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('variable.dynamic_assignment')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 }

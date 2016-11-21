@@ -3,12 +3,16 @@
 namespace PHPSA\Analyzer\Pass\Expression;
 
 use PhpParser\Node\Expr;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
 class ErrorSuppression implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Discourages the use of the `@` operator to silence errors.';
+
     /**
      * @param Expr\ErrorSuppress $expr
      * @param Context $context

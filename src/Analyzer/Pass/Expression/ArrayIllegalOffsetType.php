@@ -6,12 +6,16 @@
 namespace PHPSA\Analyzer\Pass\Expression;
 
 use PhpParser\Node\Expr;
-use PHPSA\Analyzer\Pass;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
+use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class ArrayIllegalOffsetType implements Pass\AnalyzerPassInterface, Pass\ConfigurablePassInterface
+class ArrayIllegalOffsetType implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks for illegal array key types (for example objects).';
+
     /**
      * @param Expr\Array_|Expr\Assign $expr
      * @param Context $context
@@ -65,6 +69,12 @@ class ArrayIllegalOffsetType implements Pass\AnalyzerPassInterface, Pass\Configu
         return $result;
     }
 
+    /**
+     * @param Expr $expr
+     * @param Context $context
+     *
+     * @return bool
+     */
     private function analyzeExpression(Expr $expr, Context $context)
     {
         $compiledKey = $context->getExpressionCompiler()->compile($expr);
@@ -97,18 +107,5 @@ class ArrayIllegalOffsetType implements Pass\AnalyzerPassInterface, Pass\Configu
             Expr\Array_::class,
             Expr\Assign::class,
         ];
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('array.illegal_offset_type')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 }

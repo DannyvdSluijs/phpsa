@@ -7,7 +7,6 @@ namespace PHPSA\Compiler;
 
 use InvalidArgumentException;
 use phpDocumentor\Reflection\DocBlockFactory;
-use PHPSA\Check;
 use PHPSA\CompiledExpression;
 use PHPSA\Compiler\Event\ExpressionBeforeCompile;
 use PHPSA\Context;
@@ -201,8 +200,24 @@ class Expression
             /**
              * Other
              */
+            case Node\Expr\Array_::class:
+                return new Expression\ArrayOp();
+            case Node\Expr\Assign::class:
+                return new Expression\Assign();
+            case Node\Expr\AssignRef::class:
+                return new Expression\AssignRef();
             case Node\Expr\Closure::class:
                 return new Expression\Closure();
+            case Node\Expr\ConstFetch::class:
+                return new Expression\ConstFetch();
+            case Node\Expr\ClassConstFetch::class:
+                return new Expression\ClassConstFetch();
+            case Node\Expr\PropertyFetch::class:
+                return new Expression\PropertyFetch();
+            case Node\Expr\StaticPropertyFetch::class:
+                return new Expression\StaticPropertyFetch();
+            case Node\Expr\ArrayDimFetch::class:
+                return new Expression\ArrayDimFetch();
             case Node\Expr\UnaryMinus::class:
                 return new Expression\Operators\UnaryMinus();
             case Node\Expr\UnaryPlus::class:
@@ -217,12 +232,22 @@ class Expression
                 return new Expression\EmptyOp();
             case Node\Expr\Eval_::class:
                 return new Expression\EvalOp();
+            case Node\Expr\ShellExec::class:
+                return new Expression\ShellExec();
             case Node\Expr\ErrorSuppress::class:
                 return new Expression\ErrorSuppress();
+            case Node\Expr\Include_::class:
+                return new Expression\IncludeOp();
             case Node\Expr\Clone_::class:
                 return new Expression\CloneOp();
             case Node\Expr\Ternary::class:
                 return new Expression\Ternary();
+            case Node\Expr\Yield_::class:
+                return new Expression\YieldOp();
+            case Node\Expr\YieldFrom::class:
+                return new Expression\YieldFrom();
+            case Node\Expr\Variable::class:
+                return new Expression\Variable();
         }
 
         return false;
@@ -248,6 +273,11 @@ class Expression
             throw new InvalidArgumentException('$expr must be string/object/null');
         }
 
+        if ($expr instanceof Node\Scalar) {
+            $scalar = new \PHPSA\Compiler\Scalar($this->context, $this->eventManager);
+            return $scalar->compile($expr);
+        }
+
         $this->eventManager->fire(
             ExpressionBeforeCompile::EVENT_NAME,
             new ExpressionBeforeCompile(
@@ -263,46 +293,14 @@ class Expression
                  * @todo Better compile
                  */
                 return $this->compile($expr->value);
-            case Node\Expr\PropertyFetch::class:
-                return $this->passPropertyFetch($expr);
-            case Node\Stmt\Property::class:
-                return $this->passProperty($expr);
-            case Node\Expr\ClassConstFetch::class:
-                return $this->passConstFetch($expr);
-            case Node\Expr\Assign::class:
-                return $this->passSymbol($expr);
-            case Node\Expr\AssignRef::class:
-                return $this->passSymbolByRef($expr);
-            case Node\Expr\Variable::class:
-                return $this->passExprVariable($expr);
 
             /**
-             * Expressions
+             * Names
              */
-            case Node\Expr\Array_::class:
-                return $this->getArray($expr);
-            case Node\Expr\ConstFetch::class:
-                return $this->constFetch($expr);
             case Node\Name::class:
                 return $this->getNodeName($expr);
             case Node\Name\FullyQualified::class:
                 return $this->getFullyQualifiedNodeName($expr);
-
-            /**
-             * Simple Scalar(s)
-             */
-            case \PHPSA\Node\Scalar\Nil::class:
-                return new CompiledExpression(CompiledExpression::NULL);
-            case Node\Scalar\LNumber::class:
-                return new CompiledExpression(CompiledExpression::INTEGER, $expr->value);
-            case Node\Scalar\DNumber::class:
-                return new CompiledExpression(CompiledExpression::DOUBLE, $expr->value);
-            case Node\Scalar\String_::class:
-                return new CompiledExpression(CompiledExpression::STRING, $expr->value);
-            case \PHPSA\Node\Scalar\Boolean::class:
-                return new CompiledExpression(CompiledExpression::BOOLEAN, $expr->value);
-            case \PHPSA\Node\Scalar\Fake::class:
-                return new CompiledExpression($expr->type, $expr->value);
         }
 
         $expressionCompiler = $this->factory($expr);
@@ -320,21 +318,13 @@ class Expression
     }
 
     /**
-     * @todo Implement
+     * @todo Implement - does not belong in this file
      *
      * @param Node\Stmt\Property $st
-     * @return CompiledExpression
-     */
     public function passProperty(Node\Stmt\Property $st)
     {
         $docBlock = $st->getDocComment();
         if (!$docBlock) {
-            $this->context->notice(
-                'missing-docblock',
-                sprintf('Missing docblock for $%s property', $st->props[0]->name),
-                $st
-            );
-
             return new CompiledExpression();
         }
 
@@ -342,7 +332,6 @@ class Expression
 
         $varTags = $phpdoc->getTagsByName('var');
         if ($varTags) {
-            /** @var \phpDocumentor\Reflection\DocBlock\Tag\VarTag $varTag */
             $varTag = current($varTags);
 
             $typeResolver = new \phpDocumentor\Reflection\TypeResolver();
@@ -385,6 +374,8 @@ class Expression
 
         return new CompiledExpression();
     }
+*/
+
 
     /**
      * @param Node\Expr\Variable $expr
@@ -411,7 +402,7 @@ class Expression
     {
         $this->context->debug('Unimplemented FullyQualified', $expr);
 
-        return new CompiledExpression;
+        return new CompiledExpression();
     }
 
     /**
@@ -453,302 +444,5 @@ class Expression
         }
 
         return new CompiledExpression(CompiledExpression::STRING, $expr->toString());
-    }
-
-    /**
-     * @param Node\Expr\PropertyFetch $expr
-     * @return CompiledExpression
-     */
-    protected function passPropertyFetch(Node\Expr\PropertyFetch $expr)
-    {
-        $propertNameCE = $this->compile($expr->name);
-
-        $scopeExpression = $this->compile($expr->var);
-        if ($scopeExpression->isObject()) {
-            $scopeExpressionValue = $scopeExpression->getValue();
-            if ($scopeExpressionValue instanceof ClassDefinition) {
-                $propertyName = $propertNameCE->isString() ? $propertNameCE->getValue() : false;
-                if ($propertyName) {
-                    if ($scopeExpressionValue->hasProperty($propertyName, true)) {
-                        $property = $scopeExpressionValue->getProperty($propertyName, true);
-                        return $this->compile($property);
-                    } else {
-                        $this->context->notice(
-                            'undefined-property',
-                            sprintf(
-                                'Property %s does not exist in %s scope',
-                                $propertyName,
-                                $scopeExpressionValue->getName()
-                            ),
-                            $expr
-                        );
-                    }
-                }
-            }
-
-            return new CompiledExpression(CompiledExpression::UNKNOWN);
-        } elseif ($scopeExpression->canBeObject()) {
-            return new CompiledExpression(CompiledExpression::UNKNOWN);
-        }
-
-        $this->context->notice(
-            'property-fetch-on-non-object',
-            "It's not possible to fetch a property on a non-object",
-            $expr,
-            Check::CHECK_BETA
-        );
-
-        return new CompiledExpression(CompiledExpression::UNKNOWN);
-    }
-
-    /**
-     * @param Node\Expr\ClassConstFetch $expr
-     * @return CompiledExpression
-     */
-    protected function passConstFetch(Node\Expr\ClassConstFetch $expr)
-    {
-        $leftCE = $this->compile($expr->class);
-        if ($leftCE->isObject()) {
-            $leftCEValue = $leftCE->getValue();
-            if ($leftCEValue instanceof ClassDefinition) {
-                if (!$leftCEValue->hasConst($expr->name, true)) {
-                    $this->context->notice(
-                        'undefined-const',
-                        sprintf('Constant %s does not exist in %s scope', $expr->name, $expr->class),
-                        $expr
-                    );
-                    return new CompiledExpression(CompiledExpression::UNKNOWN);
-                }
-
-                return new CompiledExpression();
-            }
-        }
-
-        $this->context->debug('Unknown const fetch', $expr);
-        return new CompiledExpression();
-    }
-
-    /**
-     * @param Node\Expr\Assign $expr
-     * @return CompiledExpression
-     */
-    protected function passSymbol(Node\Expr\Assign $expr)
-    {
-        $compiledExpression = $this->compile($expr->expr);
-
-        if ($expr->var instanceof Node\Expr\List_) {
-            $isCorrectType = $compiledExpression->isArray();
-
-            foreach ($expr->var->vars as $key => $var) {
-                if (!$var instanceof Node\Expr\Variable) {
-                    continue;
-                }
-
-                if ($var->name instanceof Node\Expr\Variable) {
-                    $this->compileVariableDeclaration($this->compile($var->name), new CompiledExpression());
-                    continue;
-                }
-
-                $symbol = $this->context->getSymbol($var->name);
-                if (!$symbol) {
-                    $symbol = new Variable(
-                        $var->name,
-                        null,
-                        CompiledExpression::UNKNOWN,
-                        $this->context->getCurrentBranch()
-                    );
-                    $this->context->addVariable($symbol);
-                }
-
-                if (!$isCorrectType) {
-                    $symbol->modify(CompiledExpression::NULL, null);
-                }
-
-                $symbol->incSets();
-            }
-
-            return new CompiledExpression();
-        }
-
-        if ($expr->var instanceof Node\Expr\Variable) {
-            $this->compileVariableDeclaration($this->compile($expr->var->name), $compiledExpression);
-
-            return $compiledExpression;
-        }
-
-        if ($expr->var instanceof Node\Expr\PropertyFetch) {
-            $compiledExpression = $this->compile($expr->var->var);
-            if ($compiledExpression->getType() == CompiledExpression::OBJECT) {
-                $objectDefinition = $compiledExpression->getValue();
-                if ($objectDefinition instanceof ClassDefinition) {
-                    if (is_string($expr->var->name)) {
-                        if ($objectDefinition->hasProperty($expr->var->name)) {
-                            return $this->compile($objectDefinition->getProperty($expr->var->name));
-                        }
-                    }
-                }
-            }
-        }
-
-        $this->context->debug('Unknown how to pass symbol');
-        return new CompiledExpression();
-    }
-
-    protected function compileVariableDeclaration(CompiledExpression $variableName, CompiledExpression $value)
-    {
-        switch ($variableName->getType()) {
-            case CompiledExpression::STRING:
-                break;
-            default:
-                $this->context->debug('Unexpected type of Variable name after compile');
-                return new CompiledExpression();
-        }
-
-        $symbol = $this->context->getSymbol($variableName->getValue());
-        if ($symbol) {
-            $symbol->modify($value->getType(), $value->getValue());
-            $this->context->modifyReferencedVariables(
-                $symbol,
-                $value->getType(),
-                $value->getValue()
-            );
-        } else {
-            $symbol = new Variable(
-                $variableName->getValue(),
-                $value->getValue(),
-                $value->getType(),
-                $this->context->getCurrentBranch()
-            );
-            $this->context->addVariable($symbol);
-        }
-
-        $symbol->incSets();
-    }
-
-    /**
-     * @param Node\Expr\AssignRef $expr
-     * @return CompiledExpression
-     */
-    protected function passSymbolByRef(Node\Expr\AssignRef $expr)
-    {
-        if ($expr->var instanceof Node\Expr\Variable) {
-            $name = $expr->var->name;
-
-            $compiledExpression = $this->compile($expr->expr);
-
-            $symbol = $this->context->getSymbol($name);
-            if ($symbol) {
-                $symbol->modify($compiledExpression->getType(), $compiledExpression->getValue());
-            } else {
-                $symbol = new Variable(
-                    $name,
-                    $compiledExpression->getValue(),
-                    $compiledExpression->getType(),
-                    $this->context->getCurrentBranch()
-                );
-                $this->context->addVariable($symbol);
-            }
-
-            if ($expr->expr instanceof Node\Expr\Variable) {
-                $rightVarName = $expr->expr->name;
-
-                $rightSymbol = $this->context->getSymbol($rightVarName);
-                if ($rightSymbol) {
-                    $rightSymbol->incUse();
-                    $symbol->setReferencedTo($rightSymbol);
-                } else {
-                    $this->context->debug('Cannot fetch variable by name: ' . $rightVarName);
-                }
-            }
-
-            $symbol->incSets();
-            return $compiledExpression;
-        }
-
-        $this->context->debug('Unknown how to pass symbol by ref');
-        return new CompiledExpression();
-    }
-
-    /**
-     * @param Node\Expr\Variable $expr
-     * @return CompiledExpression
-     */
-    protected function passExprVariable(Node\Expr\Variable $expr)
-    {
-        $variable = $this->context->getSymbol($expr->name);
-        if ($variable) {
-            $variable->incGets();
-            return new CompiledExpression($variable->getType(), $variable->getValue(), $variable);
-        }
-
-        $this->context->notice(
-            'undefined-variable',
-            sprintf('You are trying to use an undefined variable $%s', $expr->name),
-            $expr
-        );
-
-        return new CompiledExpression();
-    }
-
-    /**
-     * Compile Array_ expression to CompiledExpression
-     *
-     * @param Node\Expr\Array_ $expr
-     * @return CompiledExpression
-     */
-    protected function getArray(Node\Expr\Array_ $expr)
-    {
-        if ($expr->items === []) {
-            return new CompiledExpression(CompiledExpression::ARR, []);
-        }
-
-        $resultArray = [];
-
-        foreach ($expr->items as $item) {
-            $compiledValueResult = $this->compile($item->value);
-            if ($item->key) {
-                $compiledKeyResult = $this->compile($item->key);
-                switch ($compiledKeyResult->getType()) {
-                    case CompiledExpression::INTEGER:
-                    case CompiledExpression::DOUBLE:
-                    case CompiledExpression::BOOLEAN:
-                    case CompiledExpression::NULL:
-                    case CompiledExpression::STRING:
-                        $resultArray[$compiledKeyResult->getValue()] = $compiledValueResult->getValue();
-                        break;
-                    default:
-                        $this->context->debug("Type {$compiledKeyResult->getType()} is not supported for key value");
-                        return new CompiledExpression(CompiledExpression::ARR);
-                }
-            } else {
-                $resultArray[] = $compiledValueResult->getValue();
-            }
-        }
-
-        return new CompiledExpression(CompiledExpression::ARR, $resultArray);
-    }
-
-    /**
-     * Convert const fetch expr to CompiledExpression
-     *
-     * @param Node\Expr\ConstFetch $expr
-     * @return CompiledExpression
-     */
-    protected function constFetch(Node\Expr\ConstFetch $expr)
-    {
-        if ($expr->name instanceof Node\Name) {
-            if ($expr->name->parts[0] === 'true') {
-                return new CompiledExpression(CompiledExpression::BOOLEAN, true);
-            }
-
-            if ($expr->name->parts[0] === 'false') {
-                return new CompiledExpression(CompiledExpression::BOOLEAN, false);
-            }
-        }
-
-        /**
-         * @todo Implement check
-         */
-        return $this->compile($expr->name);
     }
 }

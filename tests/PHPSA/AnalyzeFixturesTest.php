@@ -3,25 +3,19 @@
 namespace Tests\PHPSA;
 
 use PhpParser\ParserFactory;
-use PHPSA\Analyzer\EventListener\ExpressionListener;
-use PHPSA\Analyzer\EventListener\StatementListener;
+use PHPSA\Analyzer;
 use PHPSA\Application;
+use PHPSA\Configuration;
 use PHPSA\Context;
 use PHPSA\Definition\FileParser;
+use PHPSA\Issue;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Webiny\Component\EventManager\EventManager;
 use PHPSA\Compiler;
-use PhpParser\Node;
-use PHPSA\Analyzer\Pass as AnalyzerPass;
 
 class AnalyzeFixturesTest extends TestCase
 {
-    /**
-     * @var EventManager
-     */
-    static protected $em;
-
     public function provideTestParseAndDump()
     {
         $iter = new RecursiveIteratorIterator(
@@ -38,9 +32,9 @@ class AnalyzeFixturesTest extends TestCase
             }
 
             $contents = file_get_contents($file);
-            list (, $expected) = explode('----------------------------', $contents);
+            list (, $analyzer, $expected) = explode('----------------------------', $contents);
 
-            yield [$file->getPathname(), $expected];
+            yield [$file->getPathname(), trim($analyzer), trim($expected)];
         }
     }
 
@@ -48,11 +42,12 @@ class AnalyzeFixturesTest extends TestCase
      * @dataProvider provideTestParseAndDump
      *
      * @param $file
-     * @param $expectedDump
+     * @param string $analyzer
+     * @param string $expectedDump
      * @throws \PHPSA\Exception\RuntimeException
      * @throws \Webiny\Component\EventManager\EventManagerException
      */
-    public function testParseAndDump($file, $expectedDump)
+    public function testParseAndDump($file, $analyzer, $expectedDump)
     {
         $compiler = new Compiler();
 
@@ -77,7 +72,7 @@ class AnalyzeFixturesTest extends TestCase
         $context = new Context(
             new \Symfony\Component\Console\Output\NullOutput(),
             $application = new Application(),
-            $this->getEventManager()
+            $this->getEventManager($analyzer)
         );
         $application->compiler = $compiler;
 
@@ -85,34 +80,69 @@ class AnalyzeFixturesTest extends TestCase
 
         $compiler->compile($context);
 
-        $expectedArray = json_decode(trim($expectedDump), true);
+        $expectedArray = json_decode($expectedDump, true);
         $expectedType = $expectedArray[0]["type"];
-        $issues = $application->getIssuesCollector()->getIssues();
+        $issues = array_map(
+            // @todo Remove after moving all notices on Issue(s)
+            function (Issue $issue) {
+                $location = $issue->getLocation();
 
+                return [
+                    'type' => $issue->getCheckName(),
+                    'message' => $issue->getDescription(),
+                    'file' => $location->getFileName(),
+                    'line' => $location->getLineStart(),
+                ];
+            },
+            $application->getIssuesCollector()->getIssues()
+        );
+        
         foreach ($expectedArray as $check) {
-            self::assertEquals(in_array($check, $issues), true, $file); // every expected Issue is in the collector
+            self::assertContains($check, $issues, $file); // every expected Issue is in the collector
         }
 
         foreach ($issues as $check) {
             if ($check["type"] == $expectedType) {
-                self::assertEquals(in_array($check, $expectedArray), true, $file); // there is no other issue in the collector with the same type
+                self::assertContains($check, $expectedArray, $file); // there is no other issue in the collector with the same type
             }
         }
     }
 
     /**
+     * @param string $analyzerName
      * @return EventManager
      * @throws \Webiny\Component\EventManager\EventManagerException
      */
-    protected function getEventManager()
+    protected function getEventManager($analyzerName)
     {
-        if (self::$em) {
-            return self::$em;
+        if (!class_exists($analyzerName, true)) {
+            throw new \InvalidArgumentException("Analyzer with name: {$analyzerName} doesnot exist");
         }
 
-        self::$em = EventManager::getInstance();
-        \PHPSA\Analyzer\Factory::factory(self::$em);
+        /** @var \PHPSA\Analyzer\Pass\Metadata $metaData */
+        $metaData = $analyzerName::getMetadata();
+        if (!$metaData->allowsPhpVersion(PHP_VERSION)) {
+            parent::markTestSkipped(
+                sprintf(
+                    'We cannot tests %s with %s because PHP required version is %s',
+                    $analyzerName,
+                    PHP_VERSION,
+                    $metaData->getRequiredPhpVersion()
+                )
+            );
+        }
+        
+        $analyzerConfiguration = $metaData->getConfiguration();
+        $analyzerConfiguration->attribute('enabled', true);
 
-        return self::$em;
+        $config = [
+            $analyzerName::getMetadata()->getConfiguration()
+        ];
+
+        $em = EventManager::getInstance();
+        $configuration = new Configuration([], $config);
+        \PHPSA\Analyzer\Factory::factory($em, $configuration);
+
+        return $em;
     }
 }

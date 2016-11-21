@@ -5,31 +5,26 @@
 
 namespace PHPSA;
 
+/**
+ * A collection of Issues
+ */
 class IssuesCollector
 {
     /**
-     * @var array
+     * @var Issue[]
      */
     protected $issues = [];
 
     /**
-     * @param int $type
-     * @param string $message
-     * @param string $file
-     * @param int $line
+     * @param Issue $issue
      */
-    public function addIssue($type, $message, $file, $line)
+    public function addIssue(Issue $issue)
     {
-        $this->issues[] = [
-            'type' => $type,
-            'message' => $message,
-            'file' => $file,
-            'line' => $line
-        ];
+        $this->issues[] = $issue;
     }
 
     /**
-     * @return array
+     * @return Issue[]
      */
     public function getIssues()
     {

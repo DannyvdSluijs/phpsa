@@ -3,13 +3,17 @@
 namespace PHPSA\Analyzer\Pass\Expression;
 
 use PhpParser\Node\Expr;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use PHPSA\CompiledExpression;
 
 class Casts implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks for casts that try to cast a type to itself.';
+
     /**
      * @param Expr $expr
      * @param Context $context
@@ -43,28 +47,28 @@ class Casts implements AnalyzerPassInterface
         $compiledExpression = $context->getExpressionCompiler()->compile($expr->expr);
         $exprType = $compiledExpression->getType();
         $typeName = $compiledExpression->getTypeName();
-        
+
         if ($castType === $exprType) {
             $context->notice(
                 'stupid.cast',
-                sprintf("You are trying to cast '%s' to '%s'.", $typeName, $typeName),
+                sprintf("You are trying to cast '%s' to '%s'", $typeName, $typeName),
                 $expr
             );
             return true;
         } elseif (get_class($expr) == Expr\Cast\Unset_::class && $exprType === CompiledExpression::NULL) {
             $context->notice(
                 'stupid.cast',
-                "You are trying to cast 'null' to 'unset' (null).",
+                "You are trying to cast 'null' to 'unset' (null)",
                 $expr
             );
             return true;
         }
-        
+
         return false;
     }
 
     /**
-     * @return TreeBuilder
+     * @return array
      */
     public function getRegister()
     {

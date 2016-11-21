@@ -11,22 +11,25 @@ use PHPSA\Definition\RuntimeClassDefinition;
 use PHPSA\Definition\TraitDefinition;
 use ReflectionClass;
 
+/**
+ * Compiler component
+ */
 class Compiler
 {
     /**
      * @var ClassDefinition[]
      */
-    protected $classes = array();
+    protected $classes = [];
 
     /**
      * @var TraitDefinition[]
      */
-    protected $traits = array();
+    protected $traits = [];
 
     /**
      * @var FunctionDefinition[]
      */
-    protected $functions = array();
+    protected $functions = [];
 
     /**
      * @param ClassDefinition $class
@@ -93,6 +96,20 @@ class Compiler
             }
 
             $function->compile($context);
+        }
+
+        foreach ($this->traits as $trait) {
+            /**
+             * @todo Configuration
+             *
+             * Ignore traits compiling from vendor
+             */
+            $checkVendor = strpos($trait->getFilepath(), './vendor');
+            if ($checkVendor !== false && $checkVendor < 3) {
+                continue;
+            }
+
+            $trait->compile($context);
         }
 
         foreach ($this->classes as $class) {

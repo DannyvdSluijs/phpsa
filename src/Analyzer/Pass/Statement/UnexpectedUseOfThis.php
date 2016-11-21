@@ -7,12 +7,16 @@ namespace PHPSA\Analyzer\Pass\Statement;
 
 use PhpParser\Node\Stmt;
 use PhpParser\Node;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class UnexpectedUseOfThis implements Pass\ConfigurablePassInterface, Pass\AnalyzerPassInterface
+class UnexpectedUseOfThis implements Pass\AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks for behavior that would result in overwriting $this variable.';
+
     /**
      * @param Node\Stmt $stmt
      * @param Context $context
@@ -20,8 +24,8 @@ class UnexpectedUseOfThis implements Pass\ConfigurablePassInterface, Pass\Analyz
      */
     public function pass(Node\Stmt $stmt, Context $context)
     {
-        if ($stmt instanceof Stmt\ClassMethod) {
-            return $this->inspectClassMethodArguments($stmt, $context);
+        if ($stmt instanceof Stmt\ClassMethod || $stmt instanceof Stmt\Function_) {
+            return $this->inspectParams($stmt, $context);
         } elseif ($stmt instanceof Stmt\TryCatch) {
             return $this->inspectTryCatch($stmt, $context);
         } elseif ($stmt instanceof Stmt\Foreach_) {
@@ -38,25 +42,13 @@ class UnexpectedUseOfThis implements Pass\ConfigurablePassInterface, Pass\Analyz
     }
 
     /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('unexpected_use.this')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
-    }
-
-    /**
      * @return array
      */
     public function getRegister()
     {
         return [
             Stmt\ClassMethod::class,
+            Stmt\Function_::class,
             Stmt\TryCatch::class,
             Stmt\Foreach_::class,
             Stmt\Static_::class,
@@ -66,18 +58,18 @@ class UnexpectedUseOfThis implements Pass\ConfigurablePassInterface, Pass\Analyz
     }
 
     /**
-     * @param Stmt\ClassMethod $methodStmt
+     * @param Stmt\ClassMethod|Stmt\Function_ $stmt
      * @param Context $context
      * @return bool
      */
-    private function inspectClassMethodArguments(Stmt\ClassMethod $methodStmt, Context $context)
+    private function inspectParams(Stmt $stmt, Context $context)
     {
         /** @var \PhpParser\Node\Param $param */
-        foreach ($methodStmt->getParams() as $param) {
+        foreach ($stmt->getParams() as $param) {
             if ($param->name === 'this') {
                 $context->notice(
                     'unexpected_use.this',
-                    sprintf('Method %s can not have a parameter named "this".', $methodStmt->name),
+                    sprintf('Method/Function %s can not have a parameter named "this".', $stmt->name),
                     $param
                 );
 

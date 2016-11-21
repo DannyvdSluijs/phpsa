@@ -19,23 +19,19 @@ class TryCatchSt extends AbstractCompiler
      */
     public function compile($statement, Context $context)
     {
-        if (count($statement->stmts) > 0) {
-            foreach ($statement->stmts as $stmt) {
-                \PHPSA\nodeVisitorFactory($stmt, $context);
-            }
-        } else {
-            $context->notice('not-implemented-body', 'Missing body', $statement);
+        foreach ($statement->stmts as $stmt) {
+            \PHPSA\nodeVisitorFactory($stmt, $context);
         }
 
-        if (count($statement->catches) > 0) {
-            foreach ($statement->catches as $stmt) {
-                \PHPSA\nodeVisitorFactory($stmt, $context);
-            }
+        foreach ($statement->catches as $stmt) {
+            \PHPSA\nodeVisitorFactory($stmt, $context);
         }
 
-        if (count($statement->finallyStmts) > 0) {
-            foreach ($statement->finallyStmts as $stmt) {
-                \PHPSA\nodeVisitorFactory($stmt, $context);
+        if ($statement->finallyStmts !== null) {
+            if (count($statement->finallyStmts) > 0) {
+                foreach ($statement->finallyStmts as $stmt) {
+                    \PHPSA\nodeVisitorFactory($stmt, $context);
+                }
             }
         }
     }

@@ -4,17 +4,22 @@ namespace PHPSA\Analyzer\Pass\Statement;
 
 use phpDocumentor\Reflection\DocBlockFactory;
 use PhpParser\Node\Stmt\ClassMethod;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
-use PHPSA\Analyzer\Pass\ConfigurablePassInterface;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class TestAnnotation implements ConfigurablePassInterface, AnalyzerPassInterface
+class TestAnnotation implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks for use of `@test` when methods name begins with test, since it is unnecessary.';
 
     /** @var DocBlockFactory */
     protected $docBlockFactory;
 
+    /**
+     * Creates a DocBlockFactory
+     */
     public function __construct()
     {
         $this->docBlockFactory = DocBlockFactory::createInstance();
@@ -49,19 +54,6 @@ class TestAnnotation implements ConfigurablePassInterface, AnalyzerPassInterface
             }
         }
         return false;
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('test_annotation')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 
     /**

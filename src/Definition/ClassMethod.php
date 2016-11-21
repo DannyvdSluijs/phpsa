@@ -12,6 +12,9 @@ use PHPSA\Compiler\Types;
 use PHPSA\Compiler\Event;
 use PHPSA\Context;
 
+/**
+ * Class Method Definition
+ */
 class ClassMethod extends AbstractDefinition
 {
     /**
@@ -38,7 +41,7 @@ class ClassMethod extends AbstractDefinition
      *
      * @var array
      */
-    protected $possibleReturnValues = array();
+    protected $possibleReturnValues = [];
 
     /**
      * @param string $name
@@ -69,14 +72,6 @@ class ClassMethod extends AbstractDefinition
         $this->compiled = true;
         $context->scopePointer = $this->getPointer();
 
-        if ($this->statement->getDocComment() === null) {
-            $context->notice(
-                'missing-docblock',
-                sprintf('Missing docblock for %s() method', $this->name),
-                $this->statement
-            );
-        }
-
         /**
          * It's not needed to compile empty method via it's abstract
          */
@@ -94,14 +89,6 @@ class ClassMethod extends AbstractDefinition
             return true;
         }
 
-        if (count($this->statement->stmts) == 0) {
-            return $context->notice(
-                'not-implemented-method',
-                sprintf('Method %s() is not implemented', $this->name),
-                $this->statement
-            );
-        }
-
         if ($this->statement->params) {
             foreach ($this->statement->params as $parameter) {
                 $type = CompiledExpression::UNKNOWN;
@@ -109,7 +96,7 @@ class ClassMethod extends AbstractDefinition
                 if ($parameter->type) {
                     if (is_string($parameter->type)) {
                         $type = Types::getType($parameter->type);
-                    } elseif ($parameter->type instanceof Node\Name\FullyQualified) {
+                    } elseif ($parameter->type instanceof Node\Name) {
                         $type = CompiledExpression::OBJECT;
                     }
                 }

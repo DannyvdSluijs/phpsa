@@ -6,13 +6,16 @@ use PhpParser\Node\Stmt\Property;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt;
+use PHPSA\Analyzer\Helper\DefaultMetadataPassTrait;
 use PHPSA\Analyzer\Pass\AnalyzerPassInterface;
-use PHPSA\Analyzer\Pass\ConfigurablePassInterface;
 use PHPSA\Context;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
-class MissingVisibility implements ConfigurablePassInterface, AnalyzerPassInterface
+class MissingVisibility implements AnalyzerPassInterface
 {
+    use DefaultMetadataPassTrait;
+
+    const DESCRIPTION = 'Checks for missing visibility modifiers for properties and methods.';
+
     /**
      * @param Stmt $stmt
      * @param Context $context
@@ -40,19 +43,6 @@ class MissingVisibility implements ConfigurablePassInterface, AnalyzerPassInterf
         }
 
         return true;
-    }
-
-    /**
-     * @return TreeBuilder
-     */
-    public function getConfiguration()
-    {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('missing_visibility')
-            ->canBeDisabled()
-        ;
-
-        return $treeBuilder;
     }
 
     /**
